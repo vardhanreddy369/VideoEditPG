@@ -1,0 +1,36 @@
+name: videoeditpg
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pytorch>=2.4.0
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.4
+  - pip
+  - pip:
+    - diffusers>=0.33.0
+    - transformers>=4.40.0
+    - accelerate>=0.30.0
+    - huggingface-hub>=0.23.0
+    - safetensors>=0.4.0
+    - ftfy>=6.0.3
+    - tokenizers>=0.19.0
+    - numpy>=1.24.0
+    - opencv-python>=4.9.0
+    - imageio>=2.34.0
+    - imageio-ffmpeg
+    - scikit-learn
+    - scikit-image
+    - einops
+    - peft>=0.10.0
+    - xformers
+    - pynvml
+    - easydict
+    - simplejson
+    - tqdm
+    - omegaconf
+    - wandb
