@@ -1,0 +1,24 @@
+model:
+  clip_dim: 1024
+  hidden_dim: 2048
+  num_backbone_layers: 4
+  dropout: 0.1
+
+training:
+  epochs: 500
+  batch_size: 8
+  lr: 1.0e-4
+  weight_decay: 0.01
+  warmup_steps: 100
+  val_split: 0.15
+  grad_clip: 1.0
+
+loss_weights:
+  weight_mse: 1.0
+  cosine: 0.5
+  l2_reg: 0.01
+
+paths:
+  dataset: ./data/paramgen_dataset.pt
+  out_dir: ./checkpoints
+  log_dir: ./logs
