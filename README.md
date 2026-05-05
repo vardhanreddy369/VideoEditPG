@@ -1,38 +1,58 @@
 # VideoEditPG
 
-**Parameter Generation for Human-Driven Video Editing**
+Parameter Generation for Human-Driven Video Editing
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.4+-orange.svg)](https://pytorch.org)
-[![CUDA](https://img.shields.io/badge/CUDA-12.4-green.svg)](https://developer.nvidia.com/cuda-toolkit)
+[![CUDA](https://img.shields.io/badge/CUDA-12.6-green.svg)](https://developer.nvidia.com/cuda-toolkit)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
 
 > CAP6614: Efficient AI — Final Project | University of Central Florida, Spring 2026
+
+📄 **[Read the full report (PDF)](report/VideoEditPG_Report.pdf)**
 
 ---
 
 ## The Problem
 
-Personalizing a video diffusion model to a specific human identity currently requires **per-subject fine-tuning**: minutes of compute and gigabytes of storage per person. This does not scale.
+Personalizing a video diffusion model to a specific human identity requires **per-subject fine-tuning**: minutes of compute and gigabytes of storage per person. This does not scale.
 
 ## Our Approach
 
 We train a **hypernetwork once** — it learns to predict personalized LoRA adapter weights from reference images in a single forward pass, with no gradient descent at inference time.
 
-```text
-Reference Images  ──►  CLIP ViT-H  ──►  HyperNetwork  ──►  LoRA Weights
-                                                                   │
-                                                                   ▼
-                                          Frozen Wan2.1-VACE  +  ΔW  ──►  Edited Video
-```
+---
+
+## Architecture
+
+### HyperNetwork Pipeline
+
+![HyperNetwork Architecture](report/assets/fig_hypernet_arch.png)
+
+The hypernetwork takes N reference images, encodes them with a frozen CLIP ViT-H encoder, pools across images with learned attention, then predicts per-layer LightLoRA weights through a shared MLP and dedicated weight heads.
+
+### LightLoRA Decomposition
+
+![LightLoRA Decomposition](report/assets/fig_lightlora.png)
+
+Standard LoRA: `ΔW = A × B`
+
+**LightLoRA (ours):** `ΔW = A_aux × A_pred × B_pred × B_aux`
+
+- `A_aux`, `B_aux` — frozen orthogonal bases, shared across all identities
+- `A_pred`, `B_pred` — subject-specific matrices predicted by the hypernetwork
+- The hypernetwork predicts only **800 scalars per layer** instead of full weight matrices
+- Total: 614K LoRA delta parameters | ~50 KB per identity
 
 ---
 
 ## Results
 
-All experiments run on Newton HPC — Tesla V100-PCIE-32GB.
+All experiments run on Newton HPC — Tesla V100-PCIE-32GB, CUDA 12.6.
 
 ### Identity Generation (Wan2.1-VACE-1.3B)
+
+![Generation Times](report/assets/chart_gen_times.png)
 
 | Subject | Prompt | Time (s) | VRAM (GB) |
 | --- | --- | --- | --- |
@@ -42,65 +62,42 @@ All experiments run on Newton HPC — Tesla V100-PCIE-32GB.
 | man_asian_talk | Young man talks in coffee shop | 49.5 | 21.06 |
 | woman_elderly_garden | Elderly woman tends flowers in garden | 49.4 | 21.06 |
 
+Mean generation time: **52.8 ± 7.4 s** across 5 subjects.
+
 ### LoRA Injection Feasibility
+
+![LoRA Overhead](report/assets/chart_lora_overhead.png)
 
 | Metric | Value |
 | --- | --- |
 | LoRA rank | 4 |
 | LoRA parameters | 614,400 (0.04% of model) |
-| Baseline inference time | 33.8s |
-| With LoRA inference time | 35.0s (+3.6%) |
-| MSE vs baseline | 0.05 |
 | Target modules | 50 |
+| Baseline inference time | 33.8 s |
+| With LoRA inference time | 35.0 s (+3.6%) |
+| MSE vs baseline | 0.05 |
 
-LoRA can be injected into Wan2.1-VACE with **negligible overhead** and no quality degradation — confirming the backbone is compatible with our approach.
+LoRA can be injected into Wan2.1-VACE with **negligible overhead** and no quality degradation.
+
+![LoRA Parameter Share](report/assets/chart_lora_params.png)
+
+### Storage Comparison
+
+![Storage Comparison](report/assets/chart_storage.png)
+
+| Method | Storage per Identity |
+| --- | --- |
+| Full fine-tune (fp16) | ~2.6 GB |
+| HyperDreamBooth | ~120 KB |
+| **VideoEditPG (ours)** | **~50 KB** |
+
+### Speed vs Competitors
+
+![Speed Comparison](report/assets/chart_speed.png)
 
 ---
 
-## Architecture
-
-### HyperNetwork
-
-```text
-Reference Images (N × 3 × H × W)
-        │
-        ▼
-  CLIP ViT-H Encoder  ──  frozen, no gradient
-  (N embeddings × 1024-dim)
-        │
-        ▼
-  Attention Pooling  ──  learned query pooling across N refs
-  (1024-dim)
-        │
-        ▼
-  Shared MLP Backbone  ──  4 layers, 2048-dim hidden
-  (2048-dim)
-        │
-        ▼
-  Per-Layer Weight Heads  ──  one head per UNet adapter block
-        │
-        ▼
-  LightLoRA Weights: {A_pred, B_pred} per layer
-```
-
-### LightLoRA Decomposition
-
-Standard LoRA: `ΔW = A × B`
-
-**LightLoRA (ours):**
-
-```text
-ΔW = A_aux  ×  A_pred  ×  B_pred  ×  B_aux
-      ↑              ↑        ↑              ↑
-   frozen         predicted predicted      frozen
-  shared          per-subject              shared
-```
-
-- `A_aux`, `B_aux` — frozen orthogonal bases, shared across all identities
-- `A_pred`, `B_pred` — subject-specific matrices, predicted by HyperNetwork
-- Rank = 4 | ~614K parameters | <50KB per identity
-
-### Base Model
+## Base Model Selection
 
 **Wan2.1-VACE-1.3B** — chosen over HunyuanVideo and CogVideoX-5B for:
 
@@ -110,7 +107,7 @@ Standard LoRA: `ΔW = A × B`
 | LoRA ecosystem | ✅ Mature | Minimal | Limited |
 | 1.3B variant for prototyping | ✅ | ❌ (8.3B min) | ❌ |
 | Open editing models built on it | 3 (VACE, Kiwi-Edit, SAMA) | 0 | 1 |
-| VRAM for 1.3B | 8GB | — | — |
+| VRAM for 1.3B | 8 GB | — | — |
 
 ---
 
@@ -161,7 +158,7 @@ python src/inference.py \
 
 ### LoRA Injection Test
 
-Verifies that LoRA weights can be injected into Wan2.1-VACE with no overhead:
+Verifies that LoRA weights inject into Wan2.1-VACE with no overhead:
 
 ```bash
 python src/inference.py \
@@ -173,7 +170,7 @@ python src/inference.py \
 
 Expected output:
 
-```text
+```
 lora_rank:       4
 lora_params:     614,400
 lora_percent:    0.04%
@@ -211,27 +208,6 @@ python src/inference.py \
 
 ---
 
-## Repository Structure
-
-```text
-VideoEditPG/
-├── src/
-│   ├── hypernet.py       # HyperNetwork + LightLoRA architecture
-│   ├── train.py          # Training loop with cosine LR + weight-space loss
-│   └── inference.py      # Full inference pipeline
-├── scripts/
-│   └── newton_train.sh   # SLURM job script for Newton HPC
-├── configs/
-│   └── train.yaml        # Training hyperparameters
-├── results/
-│   └── test_results.json # Experiment results from Newton
-├── environment.yml
-├── requirements.txt
-└── README.md
-```
-
----
-
 ## Training Details
 
 | Hyperparameter | Value |
@@ -248,12 +224,35 @@ VideoEditPG/
 
 **Loss function:**
 
-```text
+```
 L = λ₁ · MSE(ΔW_pred, ΔW_gt)  +  λ₂ · (1 − cosine_sim)  +  λ₃ · ||ΔW_pred||²
     λ₁=1.0                         λ₂=0.5                     λ₃=0.01
 ```
 
-The L2 weight-space loss is the key insight — it supervises in weight space, not just pixel space, giving the hypernetwork a direct target.
+---
+
+## Repository Structure
+
+```
+VideoEditPG/
+├── src/
+│   ├── hypernet.py       # HyperNetwork + LightLoRA architecture
+│   ├── train.py          # Training loop with cosine LR + weight-space loss
+│   └── inference.py      # Full inference pipeline
+├── scripts/
+│   └── newton_train.sh   # SLURM job script for Newton HPC
+├── configs/
+│   └── train.yaml        # Training hyperparameters
+├── report/
+│   ├── report.html       # Full NeurIPS-format report
+│   ├── VideoEditPG_Report.pdf
+│   └── assets/           # Figures and charts
+├── results/
+│   └── test_results.json # Experiment results from Newton
+├── environment.yml
+├── requirements.txt
+└── README.md
+```
 
 ---
 
@@ -269,10 +268,10 @@ The L2 weight-space loss is the key insight — it supervises in weight space, n
 
 | Paper | Venue | Relevance |
 | --- | --- | --- |
-| [HyperDreamBooth](https://arxiv.org/abs/2307.06949) | CVPR 2023 | Hypernetwork for image personalization — our primary inspiration |
+| [HyperDreamBooth](https://arxiv.org/abs/2307.06949) | CVPR 2023 | Hypernetwork for image personalization — primary inspiration |
 | [Video2LoRA](https://arxiv.org/abs/2603.08210) | CVPR 2026 | Parameter generation for video generation |
-| [VACE](https://github.com/ali-vilab/VACE) | 2025 | Our editing backbone |
-| [HY-WU](https://arxiv.org/abs/2603.xxxxx) | 2026 | Parameter generation for image editing (Tencent) |
+| [VACE](https://github.com/ali-vilab/VACE) | 2025 | Editing backbone |
+| [Kiwi-Edit](https://arxiv.org/abs/2603.02175) | 2026 | Versatile video editing via instruction and reference guidance |
 
 ---
 
@@ -281,9 +280,9 @@ The L2 weight-space loss is the key insight — it supervises in weight space, n
 | Name | Contribution |
 | --- | --- |
 | Sri Vardhan Reddy Gutta | Architecture design, LightLoRA implementation, Newton experiments, LoRA injection |
-| Bhargavi | Dataset curation, VACE pipeline integration |
+| Surya Bhargavi Medicharla | Dataset curation, VACE pipeline integration |
 | Samhith Reddy | Training pipeline, SLURM scripts, evaluation framework |
-| Sarayu | Related work survey, analysis, report |
+| Panditi Sarayu | Related work survey, analysis, report |
 
 ---
 
