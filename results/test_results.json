@@ -1,0 +1,93 @@
+{
+  "timestamp": "2026-03-24 15:13:25",
+  "gpu": "Tesla V100-PCIE-32GB",
+  "identity_generation": {
+    "status": "success",
+    "videos": [
+      {
+        "name": "woman_blonde_smile",
+        "prompt": "A young blonde woman with blue eyes smiles and waves at the camera in a park, natural sunlight, portrait style, high quality 4K",
+        "time_sec": 66.1,
+        "peak_vram_gb": 21.06,
+        "file_kb": 166.2,
+        "path": "/home/sr849057/newton_test/results/personalized/identity_generation/woman_blonde_smile.mp4"
+      },
+      {
+        "name": "man_beard_walk",
+        "prompt": "A middle-aged man with a dark beard and glasses walks through a busy city street, wearing a leather jacket, cinematic shallow depth of field",
+        "time_sec": 49.4,
+        "peak_vram_gb": 21.06,
+        "file_kb": 139.8,
+        "path": "/home/sr849057/newton_test/results/personalized/identity_generation/man_beard_walk.mp4"
+      },
+      {
+        "name": "woman_curly_dance",
+        "prompt": "A woman with long curly black hair and brown skin dances gracefully in a studio with white background, contemporary dance, elegant movements",
+        "time_sec": 49.6,
+        "peak_vram_gb": 21.06,
+        "file_kb": 54.6,
+        "path": "/home/sr849057/newton_test/results/personalized/identity_generation/woman_curly_dance.mp4"
+      },
+      {
+        "name": "man_asian_talk",
+        "prompt": "A young Asian man with short black hair talks animatedly to the camera in a coffee shop, warm indoor lighting, close-up portrait",
+        "time_sec": 49.5,
+        "peak_vram_gb": 21.06,
+        "file_kb": 103.0,
+        "path": "/home/sr849057/newton_test/results/personalized/identity_generation/man_asian_talk.mp4"
+      },
+      {
+        "name": "woman_elderly_garden",
+        "prompt": "An elderly woman with silver hair and warm smile tends to flowers in a garden, soft golden hour light, peaceful atmosphere",
+        "time_sec": 49.4,
+        "peak_vram_gb": 21.06,
+        "file_kb": 192.3,
+        "path": "/home/sr849057/newton_test/results/personalized/identity_generation/woman_elderly_garden.mp4"
+      }
+    ]
+  },
+  "vace_editing": {
+    "status": "success",
+    "edits": [
+      {
+        "name": "hair_to_blonde",
+        "status": "error",
+        "error": "name 'ftfy' is not defined"
+      },
+      {
+        "name": "add_hat",
+        "status": "error",
+        "error": "name 'ftfy' is not defined"
+      },
+      {
+        "name": "make_younger",
+        "status": "error",
+        "error": "name 'ftfy' is not defined"
+      },
+      {
+        "name": "change_to_suit",
+        "status": "error",
+        "error": "name 'ftfy' is not defined"
+      },
+      {
+        "name": "sunset_lighting",
+        "status": "error",
+        "error": "name 'ftfy' is not defined"
+      }
+    ]
+  },
+  "lora_injection": {
+    "status": "success",
+    "lora_rank": 4,
+    "lora_params": 614400,
+    "lora_percent": 0.04,
+    "target_modules_count": 50,
+    "baseline_time": 33.8,
+    "lora_time": 35.0,
+    "mse": 0.05,
+    "max_pixel_diff": 1.0,
+    "outputs_different": false,
+    "baseline_path": "/home/sr849057/newton_test/results/personalized/lora_test/baseline.mp4",
+    "lora_path": "/home/sr849057/newton_test/results/personalized/lora_test/with_lora.mp4"
+  }
+}

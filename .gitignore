@@ -14,6 +14,7 @@ checkpoints/
 
 # Results / outputs
 results/
+!results/test_results.json
 *.mp4
 *.avi
 *.gif
